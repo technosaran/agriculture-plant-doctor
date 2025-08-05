@@ -15,6 +15,7 @@ export default function Home() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Get user location and weather data
@@ -23,49 +24,39 @@ export default function Home() {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
-              const mockLocation: LocationData = {
+              const userLocation: LocationData = {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
                 city: 'Your Location',
                 state: 'State',
-                country: 'Country',
+                country: 'India',
               };
-              setLocation(mockLocation);
+              setLocation(userLocation);
               
-              // Get weather data
-              const weather = await weatherService.getWeatherForecast(mockLocation);
-              setWeatherData(weather);
+              try {
+                // Get weather data from real APIs
+                const weather = await weatherService.getWeatherForecast(userLocation);
+                setWeatherData(weather);
+                setError(null);
+              } catch (weatherError) {
+                console.error('Weather API error:', weatherError);
+                setError('Unable to fetch weather data. Please check your API configuration.');
+              }
               setLoading(false);
             },
-            () => {
-              // Fallback to mock data if geolocation fails
-              const mockLocation: LocationData = {
-                latitude: 40.7128,
-                longitude: -74.0060,
-                city: 'New York',
-                state: 'NY',
-                country: 'USA',
-              };
-              setLocation(mockLocation);
-              setWeatherData(weatherService.getMockWeatherData(mockLocation));
+            (geolocationError) => {
+              console.error('Geolocation error:', geolocationError);
+              setError('Location access denied. Please enable location services for better recommendations.');
               setLoading(false);
             }
           );
         } else {
-          // Fallback for browsers without geolocation
-          const mockLocation: LocationData = {
-            latitude: 40.7128,
-            longitude: -74.0060,
-            city: 'New York',
-            state: 'NY',
-            country: 'USA',
-          };
-          setLocation(mockLocation);
-          setWeatherData(weatherService.getMockWeatherData(mockLocation));
+          setError('Geolocation not supported. Please enable location services for better recommendations.');
           setLoading(false);
         }
       } catch (error) {
         console.error('Error initializing app:', error);
+        setError('Failed to initialize application. Please check your internet connection.');
         setLoading(false);
       }
     };
@@ -78,9 +69,9 @@ export default function Home() {
       case 'disease-detection':
         return <DiseaseDetection />;
       case 'crop-recommendations':
-        return <CropRecommendations weatherData={weatherData} />;
+        return <CropRecommendations weatherData={weatherData} location={location} />;
       case 'fertilizer-guide':
-        return <FertilizerGuide />;
+        return <FertilizerGuide location={location} />;
       case 'dashboard':
       default:
         return (
@@ -132,6 +123,35 @@ export default function Home() {
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="flex-1 p-6">
           <div className="max-w-7xl mx-auto">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">API Configuration Required</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{error}</p>
+                      <p className="mt-2">
+                        Please configure the following API keys in your <code className="bg-red-100 px-1 rounded">.env.local</code> file:
+                      </p>
+                      <ul className="mt-1 list-disc list-inside">
+                        <li>NEXT_PUBLIC_WEATHER_API_KEY (OpenWeatherMap)</li>
+                        <li>NEXT_PUBLIC_IMD_API_KEY (Indian Meteorological Department)</li>
+                        <li>NEXT_PUBLIC_KVK_API_KEY (Krishi Vigyan Kendra)</li>
+                        <li>NEXT_PUBLIC_PLANT_DISEASE_API_KEY (PlantNet)</li>
+                        <li>NEXT_PUBLIC_FERTILIZER_API_KEY (Indian Fertilizer Database)</li>
+                        <li>NEXT_PUBLIC_SOIL_API_KEY (ICAR-NBSS&LUP)</li>
+                        <li>NEXT_PUBLIC_MARKET_API_KEY (Agmarknet)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {renderContent()}
           </div>
         </main>

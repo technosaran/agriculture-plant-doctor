@@ -1,75 +1,68 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Fertilizer, CropRecommendation } from '@/types';
+import { Fertilizer, CropRecommendation, LocationData } from '@/types';
 import { fertilizerService } from '@/services/fertilizerService';
 import { cropService } from '@/services/cropService';
 
-const FertilizerGuide: React.FC = () => {
+interface FertilizerGuideProps {
+  location: LocationData | null;
+}
+
+const FertilizerGuide: React.FC<FertilizerGuideProps> = ({ location }) => {
   const [fertilizers, setFertilizers] = useState<Fertilizer[]>([]);
   const [crops, setCrops] = useState<CropRecommendation[]>([]);
-  const [selectedCrop, setSelectedCrop] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCrop, setSelectedCrop] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedGrowthStage, setSelectedGrowthStage] = useState<string>('all');
-  const [loading, setLoading] = useState(true);
   const [selectedFertilizer, setSelectedFertilizer] = useState<Fertilizer | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [fertilizerData, cropData] = await Promise.all([
-        fertilizerService.getFertilizerRecommendations(),
-        cropService.getCropRecommendations(null)
-      ]);
-      setFertilizers(fertilizerData);
-      setCrops(cropData);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getFilteredFertilizers = () => {
-    let filtered = fertilizers;
-
-    if (selectedCrop) {
-      const crop = crops.find(c => c.id === selectedCrop);
-      if (crop) {
-        filtered = filtered.filter(fertilizer => 
-          fertilizer.suitableCrops.includes(crop.name) ||
-          fertilizer.suitableCrops.includes('All crops')
-        );
+    const loadData = async () => {
+      if (!location) {
+        setError('Location data not available. Please enable location services.');
+        return;
       }
-    }
 
-    if (selectedType !== 'all') {
-      filtered = filtered.filter(fertilizer => fertilizer.type === selectedType);
-    }
+      setLoading(true);
+      setError(null);
 
-    if (selectedGrowthStage !== 'all') {
-      filtered = filtered.filter(fertilizer => {
-        switch (selectedGrowthStage) {
-          case 'seedling':
-            return fertilizer.name.includes('Compost') || fertilizer.name.includes('Worm') || fertilizer.npkRatio.includes('1-1-1');
-          case 'vegetative':
-            return fertilizer.npkRatio.includes('20-20-20') || fertilizer.name.includes('Fish') || fertilizer.name.includes('Seaweed');
-          case 'flowering':
-            return fertilizer.npkRatio.includes('3-15-0') || fertilizer.name.includes('Bone');
-          case 'fruiting':
-            return fertilizer.name.includes('Calcium') || fertilizer.name.includes('Epsom') || fertilizer.npkRatio.includes('20-20-20');
-          default:
-            return true;
-        }
-      });
-    }
+      try {
+        // Load fertilizers and crops in parallel
+        const [fertilizerData, cropData] = await Promise.all([
+          fertilizerService.getFertilizerRecommendations(
+            undefined, // crop
+            undefined, // soilData
+            undefined, // growthStage
+            { latitude: location.latitude, longitude: location.longitude }
+          ),
+          cropService.getCropRecommendations(
+            null, // weatherData
+            undefined, // soilData
+            { latitude: location.latitude, longitude: location.longitude }
+          )
+        ]);
 
-    return filtered;
-  };
+        setFertilizers(fertilizerData);
+        setCrops(cropData);
+      } catch (error) {
+        console.error('Error loading fertilizer data:', error);
+        setError('Failed to load fertilizer recommendations. Please check your API configuration.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [location]);
+
+  const filteredFertilizers = fertilizers.filter((fertilizer) => {
+    const cropMatch = selectedCrop === 'all' || fertilizer.suitableCrops.includes(selectedCrop) || fertilizer.suitableCrops.includes('All crops');
+    const typeMatch = selectedType === 'all' || fertilizer.type === selectedType;
+    return cropMatch && typeMatch;
+  });
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -80,27 +73,20 @@ const FertilizerGuide: React.FC = () => {
     }
   };
 
-  const getNPKColor = (npkRatio: string) => {
-    const [n, p, k] = npkRatio.split('-').map(Number);
-    if (n > 15) return 'text-red-600';
-    if (p > 15) return 'text-blue-600';
-    if (k > 15) return 'text-green-600';
-    return 'text-gray-600';
+  const getNPKColor = (npk: string) => {
+    const [n, p, k] = npk.split('-').map(Number);
+    if (n > 15 || p > 15 || k > 15) return 'text-red-600 bg-red-100';
+    if (n > 10 || p > 10 || k > 10) return 'text-yellow-600 bg-yellow-100';
+    return 'text-green-600 bg-green-100';
   };
 
-  const filteredFertilizers = getFilteredFertilizers();
-
-  if (loading) {
+  if (error) {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded"></div>
-              ))}
-            </div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">🌱 Fertilizer Guide</h2>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-700">{error}</p>
           </div>
         </div>
       </div>
@@ -112,31 +98,30 @@ const FertilizerGuide: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">🌱 Fertilizer Guide</h2>
         <p className="text-gray-600 mb-6">
-          Get personalized fertilizer recommendations based on your crops, soil conditions, and growth stages.
+          Get personalized fertilizer recommendations based on your crops, soil conditions, and growth stage.
         </p>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Crop Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Crop</label>
             <select
               value={selectedCrop}
               onChange={(e) => setSelectedCrop(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              <option value="">All Crops</option>
+              <option value="all">All Crops</option>
               {crops.map((crop) => (
-                <option key={crop.id} value={crop.id}>{crop.name}</option>
+                <option key={crop.id} value={crop.name}>{crop.name}</option>
               ))}
             </select>
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fertilizer Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="all">All Types</option>
               <option value="organic">Organic</option>
@@ -144,13 +129,12 @@ const FertilizerGuide: React.FC = () => {
               <option value="bio">Bio</option>
             </select>
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Growth Stage</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Growth Stage</label>
             <select
               value={selectedGrowthStage}
               onChange={(e) => setSelectedGrowthStage(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="all">All Stages</option>
               <option value="seedling">Seedling</option>
@@ -159,77 +143,44 @@ const FertilizerGuide: React.FC = () => {
               <option value="fruiting">Fruiting</option>
             </select>
           </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                setSelectedCrop('');
-                setSelectedType('all');
-                setSelectedGrowthStage('all');
-              }}
-              className="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
-            >
-              Clear Filters
-            </button>
-          </div>
         </div>
 
-        {/* Educational Content */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <h3 className="text-sm font-medium text-yellow-800 mb-2">📚 Understanding NPK Ratios</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-yellow-700">
-            <div>
-              <strong>Nitrogen (N):</strong> Promotes leaf growth and green color
-            </div>
-            <div>
-              <strong>Phosphorus (P):</strong> Supports root development and flowering
-            </div>
-            <div>
-              <strong>Potassium (K):</strong> Enhances fruit quality and disease resistance
-            </div>
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading fertilizer recommendations...</p>
           </div>
-        </div>
-
-        {/* Fertilizer Grid */}
-        {filteredFertilizers.length > 0 ? (
+        ) : filteredFertilizers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredFertilizers.map((fertilizer) => (
               <div key={fertilizer.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">{fertilizer.name}</h3>
-                    <p className={`text-lg font-bold ${getNPKColor(fertilizer.npkRatio)}`}>
-                      NPK {fertilizer.npkRatio}
-                    </p>
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getTypeColor(fertilizer.type)}`}>
+                      {fertilizer.type}
+                    </span>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(fertilizer.type)}`}>
-                    {fertilizer.type.toUpperCase()}
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getNPKColor(fertilizer.npkRatio)}`}>
+                    NPK {fertilizer.npkRatio}
                   </span>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-sm">
-                    <div className="text-gray-600 mb-1">Application:</div>
-                    <div className="text-gray-800">{fertilizer.application}</div>
-                  </div>
-
-                  <div className="text-sm">
-                    <div className="text-gray-600 mb-1">Benefits:</div>
-                    <ul className="text-gray-800 space-y-1">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-800 mb-1">Benefits:</h4>
+                    <ul className="text-xs text-gray-600 space-y-1">
                       {fertilizer.benefits.slice(0, 2).map((benefit, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="text-green-500 mr-1">•</span>
-                          {benefit}
-                        </li>
+                        <li key={index}>• {benefit}</li>
                       ))}
                       {fertilizer.benefits.length > 2 && (
-                        <li className="text-gray-500 text-xs">+{fertilizer.benefits.length - 2} more benefits</li>
+                        <li className="text-gray-500">+{fertilizer.benefits.length - 2} more benefits</li>
                       )}
                     </ul>
                   </div>
 
-                  <div className="text-sm">
-                    <div className="text-gray-600 mb-1">Suitable for:</div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-800 mb-1">Suitable Crops:</h4>
                     <div className="flex flex-wrap gap-1">
                       {fertilizer.suitableCrops.slice(0, 3).map((crop, index) => (
                         <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
@@ -242,16 +193,16 @@ const FertilizerGuide: React.FC = () => {
                     </div>
                   </div>
 
-                                     <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                     <div className="text-sm">
-                       <span className="text-gray-600">Price: </span>
-                       <span className="font-medium text-gray-800">
-                         {fertilizer.price === 0 ? 'Free (DIY)' : fertilizer.price ? `$${fertilizer.price}` : 'Price not available'}
-                       </span>
-                     </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                    <div className="text-sm">
+                      <span className="text-gray-600">Price: </span>
+                      <span className="font-medium text-gray-800">
+                        {fertilizer.price === 0 ? 'Free (DIY)' : fertilizer.price ? `₹${fertilizer.price}` : 'Price not available'}
+                      </span>
+                    </div>
                     <button
                       onClick={() => setSelectedFertilizer(fertilizer)}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                      className="text-green-600 hover:text-green-700 text-sm font-medium"
                     >
                       View Details
                     </button>
@@ -262,9 +213,7 @@ const FertilizerGuide: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-8">
-            <div className="text-4xl mb-4">🌱</div>
-            <h3 className="text-lg font-medium text-gray-800 mb-2">No fertilizers match your criteria</h3>
-            <p className="text-gray-600">Try adjusting your filters to see more options.</p>
+            <p className="text-gray-600">No fertilizers found matching your criteria.</p>
           </div>
         )}
       </div>
@@ -277,32 +226,43 @@ const FertilizerGuide: React.FC = () => {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-800">{selectedFertilizer.name}</h2>
-                  <p className={`text-lg font-bold ${getNPKColor(selectedFertilizer.npkRatio)}`}>
-                    NPK {selectedFertilizer.npkRatio}
-                  </p>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getTypeColor(selectedFertilizer.type)}`}>
+                      {selectedFertilizer.type}
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getNPKColor(selectedFertilizer.npkRatio)}`}>
+                      NPK {selectedFertilizer.npkRatio}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setSelectedFertilizer(null)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  ×
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-medium text-gray-800 mb-2">Application Instructions</h3>
-                  <p className="text-gray-600">{selectedFertilizer.application}</p>
+                  <h3 className="font-medium text-gray-800 mb-2">NPK Explanation</h3>
+                  <p className="text-sm text-gray-600">
+                    {fertilizerService.getNPKExplanation(selectedFertilizer.npkRatio)}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-medium text-gray-800 mb-2">Application Method</h3>
+                  <p className="text-sm text-gray-600">{selectedFertilizer.application}</p>
                 </div>
 
                 <div>
                   <h3 className="font-medium text-gray-800 mb-2">Benefits</h3>
-                  <ul className="text-gray-600 space-y-1">
+                  <ul className="text-sm text-gray-600 space-y-1">
                     {selectedFertilizer.benefits.map((benefit, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="text-green-500 mr-2">•</span>
-                        {benefit}
-                      </li>
+                      <li key={index}>• {benefit}</li>
                     ))}
                   </ul>
                 </div>
@@ -318,23 +278,16 @@ const FertilizerGuide: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="font-medium text-gray-800 mb-2">NPK Explanation</h3>
-                  <p className="text-gray-600">
-                    {fertilizerService.getNPKExplanation(selectedFertilizer.npkRatio)}
-                  </p>
-                </div>
-
-                                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                   <div className="text-lg">
-                     <span className="text-gray-600">Price: </span>
-                     <span className="font-bold text-gray-800">
-                       {selectedFertilizer.price === 0 ? 'Free (Can be made at home)' : selectedFertilizer.price ? `$${selectedFertilizer.price}` : 'Price not available'}
-                     </span>
-                   </div>
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div className="text-lg">
+                    <span className="text-gray-600">Price: </span>
+                    <span className="font-bold text-gray-800">
+                      {selectedFertilizer.price === 0 ? 'Free (Can be made at home)' : selectedFertilizer.price ? `₹${selectedFertilizer.price}` : 'Price not available'}
+                    </span>
+                  </div>
                   <button
                     onClick={() => setSelectedFertilizer(null)}
-                    className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
                     Close
                   </button>

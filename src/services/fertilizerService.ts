@@ -1,268 +1,292 @@
-import { Fertilizer, CropRecommendation, SoilData } from '@/types';
+import { Fertilizer, CropRecommendation, SoilData, FertilizerResponse, FertilizerData, SoilHealthResponse } from '@/types';
+import { API_CONFIG, API_ENDPOINTS } from '@/config/api';
 
 class FertilizerService {
-  private mockFertilizers: Fertilizer[] = [
-    {
-      id: 'fert_1',
-      name: 'NPK 20-20-20',
-      type: 'inorganic',
-      npkRatio: '20-20-20',
-      application: 'Apply 1-2 tablespoons per gallon of water every 2-3 weeks during growing season',
-      benefits: [
-        'Balanced nutrition for all plants',
-        'Promotes healthy root development',
-        'Enhances flowering and fruiting',
-        'Suitable for most crops',
-      ],
-      suitableCrops: ['Tomato', 'Cucumber', 'Bell Pepper', 'Lettuce', 'Spinach'],
-      price: 15.99,
-    },
-    {
-      id: 'fert_2',
-      name: 'Fish Emulsion',
-      type: 'organic',
-      npkRatio: '5-1-1',
-      application: 'Dilute 1 tablespoon per gallon of water and apply every 2 weeks',
-      benefits: [
-        'Natural source of nitrogen',
-        'Improves soil microbial activity',
-        'Safe for organic gardening',
-        'Gentle on plant roots',
-      ],
-      suitableCrops: ['Lettuce', 'Spinach', 'Herbs', 'Leafy vegetables'],
-      price: 12.99,
-    },
-    {
-      id: 'fert_3',
-      name: 'Bone Meal',
-      type: 'organic',
-      npkRatio: '3-15-0',
-      application: 'Mix 1-2 cups per square yard into soil before planting',
-      benefits: [
-        'High phosphorus content',
-        'Promotes strong root development',
-        'Long-lasting soil amendment',
-        'Natural source of calcium',
-      ],
-      suitableCrops: ['Tomato', 'Bell Pepper', 'Carrot', 'Root vegetables'],
-      price: 8.99,
-    },
-    {
-      id: 'fert_4',
-      name: 'Compost Tea',
-      type: 'organic',
-      npkRatio: '1-1-1',
-      application: 'Apply as foliar spray or soil drench every 1-2 weeks',
-      benefits: [
-        'Improves soil structure',
-        'Enhances nutrient availability',
-        'Suppresses soil-borne diseases',
-        'Increases beneficial microorganisms',
-      ],
-      suitableCrops: ['All crops', 'Especially beneficial for vegetables'],
-      price: 0, // Can be made at home
-    },
-    {
-      id: 'fert_5',
-      name: 'Calcium Nitrate',
-      type: 'inorganic',
-      npkRatio: '15-0-0',
-      application: 'Apply 1 tablespoon per gallon of water every 2 weeks',
-      benefits: [
-        'Prevents blossom end rot',
-        'Provides quick nitrogen boost',
-        'Improves fruit quality',
-        'Enhances calcium uptake',
-      ],
-      suitableCrops: ['Tomato', 'Bell Pepper', 'Cucumber', 'Fruiting vegetables'],
-      price: 18.99,
-    },
-    {
-      id: 'fert_6',
-      name: 'Seaweed Extract',
-      type: 'organic',
-      npkRatio: '1-1-2',
-      application: 'Dilute 1-2 tablespoons per gallon and apply as foliar spray',
-      benefits: [
-        'Natural growth stimulant',
-        'Improves stress tolerance',
-        'Enhances nutrient absorption',
-        'Contains trace minerals',
-      ],
-      suitableCrops: ['All crops', 'Especially beneficial for stressed plants'],
-      price: 22.99,
-    },
-    {
-      id: 'fert_7',
-      name: 'Epsom Salt',
-      type: 'inorganic',
-      npkRatio: '0-0-0',
-      application: 'Dissolve 1 tablespoon per gallon of water and apply monthly',
-      benefits: [
-        'Provides magnesium and sulfur',
-        'Improves chlorophyll production',
-        'Enhances fruit flavor',
-        'Prevents magnesium deficiency',
-      ],
-      suitableCrops: ['Tomato', 'Bell Pepper', 'Cucumber', 'Leafy greens'],
-      price: 5.99,
-    },
-    {
-      id: 'fert_8',
-      name: 'Worm Castings',
-      type: 'organic',
-      npkRatio: '2-1-1',
-      application: 'Mix 1-2 cups per square foot into soil or use as top dressing',
-      benefits: [
-        'Rich in beneficial microorganisms',
-        'Improves soil structure',
-        'Slow-release nutrients',
-        'Natural pest deterrent',
-      ],
-      suitableCrops: ['All crops', 'Excellent for seedlings'],
-      price: 14.99,
-    },
-  ];
+  private fertilizerBaseUrl = API_CONFIG.FERTILIZER_API_BASE_URL;
+  private fertilizerApiKey = API_CONFIG.FERTILIZER_API_KEY;
+  private soilBaseUrl = API_CONFIG.SOIL_API_BASE_URL;
+  private soilApiKey = API_CONFIG.SOIL_API_KEY;
 
   async getFertilizerRecommendations(
     crop?: CropRecommendation,
     soilData?: SoilData,
-    growthStage?: 'seedling' | 'vegetative' | 'flowering' | 'fruiting'
+    growthStage?: 'seedling' | 'vegetative' | 'flowering' | 'fruiting',
+    location?: { latitude: number; longitude: number }
   ): Promise<Fertilizer[]> {
     try {
-      let recommendations = this.mockFertilizers;
-
-      // Filter by crop type if specified
-      if (crop) {
-        recommendations = this.filterByCrop(recommendations, crop);
+      if (!this.fertilizerApiKey) {
+        throw new Error('Fertilizer API key not configured. Please add NEXT_PUBLIC_FERTILIZER_API_KEY to your environment variables.');
       }
 
-      // Filter by soil conditions if available
-      if (soilData) {
-        recommendations = this.filterBySoil(recommendations, soilData);
-      }
-
-      // Filter by growth stage if specified
-      if (growthStage) {
-        recommendations = this.filterByGrowthStage(recommendations, growthStage);
-      }
-
-      // Sort by relevance and price
-      recommendations.sort((a, b) => {
-        const aScore = this.getRelevanceScore(a, crop, soilData);
-        const bScore = this.getRelevanceScore(b, crop, soilData);
-        return bScore - aScore;
+      const params = new URLSearchParams({
+        api_key: this.fertilizerApiKey,
+        ...(crop && { crop_name: crop.name }),
+        ...(soilData && {
+          ph: soilData.ph.toString(),
+          fertility: soilData.fertility,
+          nitrogen: soilData.nitrogen.toString(),
+          phosphorus: soilData.phosphorus.toString(),
+          potassium: soilData.potassium.toString()
+        }),
+        ...(growthStage && { growth_stage: growthStage }),
+        ...(location && { 
+          lat: location.latitude.toString(), 
+          lon: location.longitude.toString() 
+        })
       });
 
-      return recommendations.slice(0, 5); // Return top 5 recommendations
+      const response = await fetch(
+        `${this.fertilizerBaseUrl}${API_ENDPOINTS.FERTILIZER.RECOMMENDATIONS}?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch fertilizer recommendations from API');
+      }
+
+      const data: FertilizerResponse = await response.json();
+      
+      // Transform API response to our format
+      return data.recommendations?.map((fertilizer: FertilizerData, index: number) => ({
+        id: `fert_${index}`,
+        name: fertilizer.name,
+        type: (fertilizer.type as 'organic' | 'inorganic' | 'bio') || 'inorganic',
+        npkRatio: fertilizer.npk_ratio || '0-0-0',
+        application: fertilizer.application_method || 'Apply as directed',
+        benefits: fertilizer.benefits || ['Provides essential nutrients'],
+        suitableCrops: fertilizer.suitable_crops || ['All crops'],
+        price: fertilizer.price || 0,
+      })) || [];
+
     } catch (error) {
       console.error('Fertilizer recommendation error:', error);
-      return this.mockFertilizers.slice(0, 3); // Return fallback recommendations
+      throw new Error('Unable to fetch fertilizer recommendations. Please check your API configuration.');
     }
   }
 
-  private filterByCrop(fertilizers: Fertilizer[], crop: CropRecommendation): Fertilizer[] {
-    return fertilizers.filter(fertilizer => 
-      fertilizer.suitableCrops.includes(crop.name) ||
-      fertilizer.suitableCrops.includes('All crops')
-    );
+  async getFertilizerPrices(location?: { latitude: number; longitude: number }): Promise<unknown[]> {
+    try {
+      if (!this.fertilizerApiKey) {
+        throw new Error('Fertilizer API key not configured');
+      }
+
+      const params = new URLSearchParams({
+        api_key: this.fertilizerApiKey,
+        ...(location && { 
+          lat: location.latitude.toString(), 
+          lon: location.longitude.toString() 
+        })
+      });
+
+      const response = await fetch(
+        `${this.fertilizerBaseUrl}${API_ENDPOINTS.FERTILIZER.PRICES}?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch fertilizer prices from API');
+      }
+
+      const data: FertilizerResponse = await response.json();
+      return data.prices || [];
+
+    } catch (error) {
+      console.error('Fertilizer prices error:', error);
+      throw new Error('Unable to fetch fertilizer prices. Please check your API configuration.');
+    }
   }
 
-  private filterBySoil(fertilizers: Fertilizer[], soil: SoilData): Fertilizer[] {
-    return fertilizers.filter(fertilizer => {
-      // Low pH soil needs more organic matter
-      if (soil.ph < 6.0) {
-        return fertilizer.type === 'organic';
+  async searchFertilizers(query: string): Promise<Fertilizer[]> {
+    try {
+      if (!this.fertilizerApiKey) {
+        throw new Error('Fertilizer API key not configured');
       }
+
+      const params = new URLSearchParams({
+        api_key: this.fertilizerApiKey,
+        query: query
+      });
+
+      const response = await fetch(
+        `${this.fertilizerBaseUrl}${API_ENDPOINTS.FERTILIZER.SEARCH}?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to search fertilizers from API');
+      }
+
+      const data: FertilizerResponse = await response.json();
       
-      // Low fertility soil needs balanced NPK
-      if (soil.fertility === 'low') {
-        return fertilizer.npkRatio.includes('20-20-20') || fertilizer.type === 'organic';
+      return data.fertilizers?.map((fertilizer: FertilizerData, index: number) => ({
+        id: `search_${index}`,
+        name: fertilizer.name,
+        type: (fertilizer.type as 'organic' | 'inorganic' | 'bio') || 'inorganic',
+        npkRatio: fertilizer.npk_ratio || '0-0-0',
+        application: fertilizer.application_method || 'Apply as directed',
+        benefits: fertilizer.benefits || ['Provides essential nutrients'],
+        suitableCrops: fertilizer.suitable_crops || ['All crops'],
+        price: fertilizer.price || 0,
+      })) || [];
+
+    } catch (error) {
+      console.error('Fertilizer search error:', error);
+      throw new Error('Unable to search fertilizers. Please check your API configuration.');
+    }
+  }
+
+  async getSoilHealthData(location: { latitude: number; longitude: number }): Promise<SoilHealthResponse | null> {
+    try {
+      if (!this.soilApiKey) {
+        throw new Error('Soil API key not configured');
       }
 
-      return true;
-    });
-  }
+      const params = new URLSearchParams({
+        api_key: this.soilApiKey,
+        lat: location.latitude.toString(),
+        lon: location.longitude.toString()
+      });
 
-  private filterByGrowthStage(
-    fertilizers: Fertilizer[], 
-    stage: 'seedling' | 'vegetative' | 'flowering' | 'fruiting'
-  ): Fertilizer[] {
-    switch (stage) {
-      case 'seedling':
-        return fertilizers.filter(f => 
-          f.name.includes('Compost') || 
-          f.name.includes('Worm') || 
-          f.npkRatio.includes('1-1-1')
-        );
-      case 'vegetative':
-        return fertilizers.filter(f => 
-          f.npkRatio.includes('20-20-20') || 
-          f.name.includes('Fish') ||
-          f.name.includes('Seaweed')
-        );
-      case 'flowering':
-        return fertilizers.filter(f => 
-          f.npkRatio.includes('3-15-0') || 
-          f.name.includes('Bone')
-        );
-      case 'fruiting':
-        return fertilizers.filter(f => 
-          f.name.includes('Calcium') || 
-          f.name.includes('Epsom') ||
-          f.npkRatio.includes('20-20-20')
-        );
-      default:
-        return fertilizers;
+      const response = await fetch(
+        `${this.soilBaseUrl}${API_ENDPOINTS.SOIL.HEALTH_CARD}?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch soil health data from API');
+      }
+
+      return await response.json() as SoilHealthResponse;
+
+    } catch (error) {
+      console.error('Soil health data error:', error);
+      throw new Error('Unable to fetch soil health data. Please check your API configuration.');
     }
   }
 
-  private getRelevanceScore(
-    fertilizer: Fertilizer, 
-    crop?: CropRecommendation, 
-    soilData?: SoilData
-  ): number {
-    let score = 0;
+  async getSoilRecommendations(location: { latitude: number; longitude: number }): Promise<unknown> {
+    try {
+      if (!this.soilApiKey) {
+        throw new Error('Soil API key not configured');
+      }
 
-    // Crop compatibility
-    if (crop && fertilizer.suitableCrops.includes(crop.name)) {
-      score += 10;
-    } else if (fertilizer.suitableCrops.includes('All crops')) {
-      score += 5;
+      const params = new URLSearchParams({
+        api_key: this.soilApiKey,
+        lat: location.latitude.toString(),
+        lon: location.longitude.toString()
+      });
+
+      const response = await fetch(
+        `${this.soilBaseUrl}${API_ENDPOINTS.SOIL.RECOMMENDATIONS}?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch soil recommendations from API');
+      }
+
+      return await response.json();
+
+    } catch (error) {
+      console.error('Soil recommendations error:', error);
+      throw new Error('Unable to fetch soil recommendations. Please check your API configuration.');
     }
-
-    // Organic preference for low pH soils
-    if (soilData && soilData.ph < 6.0 && fertilizer.type === 'organic') {
-      score += 5;
-    }
-
-    // Price consideration (lower price gets higher score)
-    if (fertilizer.price && fertilizer.price > 0) {
-      score += (50 - fertilizer.price) / 10;
-    } else {
-      score += 10; // Free options get bonus
-    }
-
-    return score;
   }
 
   async getFertilizerDetails(fertilizerId: string): Promise<Fertilizer | null> {
     try {
-      const fertilizer = this.mockFertilizers.find(f => f.id === fertilizerId);
-      return fertilizer || null;
+      if (!this.fertilizerApiKey) {
+        throw new Error('Fertilizer API key not configured');
+      }
+
+      const params = new URLSearchParams({
+        api_key: this.fertilizerApiKey,
+        fertilizer_id: fertilizerId
+      });
+
+      const response = await fetch(
+        `${this.fertilizerBaseUrl}/fertilizer-details?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch fertilizer details from API');
+      }
+
+      const fertilizer: FertilizerData = await response.json();
+      
+      return {
+        id: fertilizer.fertilizer_id || fertilizerId,
+        name: fertilizer.name,
+        type: (fertilizer.type as 'organic' | 'inorganic' | 'bio') || 'inorganic',
+        npkRatio: fertilizer.npk_ratio || '0-0-0',
+        application: fertilizer.application_method || 'Apply as directed',
+        benefits: fertilizer.benefits || ['Provides essential nutrients'],
+        suitableCrops: fertilizer.suitable_crops || ['All crops'],
+        price: fertilizer.price || 0,
+      };
+
     } catch (error) {
       console.error('Error fetching fertilizer details:', error);
       return null;
     }
   }
 
-  getFertilizersByType(type: 'organic' | 'inorganic' | 'bio'): Fertilizer[] {
-    return this.mockFertilizers.filter(f => f.type === type);
+  getFertilizersByType(type: 'organic' | 'inorganic' | 'bio'): Promise<Fertilizer[]> {
+    return this.searchFertilizers(`type:${type}`);
   }
 
   getNPKExplanation(npkRatio: string): string {
     const [n, p, k] = npkRatio.split('-').map(Number);
-    return `Nitrogen (${n}%): Promotes leaf growth. Phosphorus (${p}%): Supports root development and flowering. Potassium (${k}%): Enhances fruit quality and disease resistance.`;
+    return `Nitrogen (${n}%): Promotes leaf growth and green color. Phosphorus (${p}%): Supports root development and flowering. Potassium (${k}%): Enhances fruit quality and disease resistance.`;
+  }
+
+  // Indian fertilizer subsidy information
+  async getFertilizerSubsidyInfo(): Promise<unknown> {
+    try {
+      if (!this.fertilizerApiKey) {
+        throw new Error('Fertilizer API key not configured');
+      }
+
+      const response = await fetch(
+        `${this.fertilizerBaseUrl}/subsidy-info?api_key=${this.fertilizerApiKey}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch fertilizer subsidy information');
+      }
+
+      return await response.json();
+
+    } catch (error) {
+      console.error('Fertilizer subsidy error:', error);
+      throw new Error('Unable to fetch fertilizer subsidy information. Please check your API configuration.');
+    }
+  }
+
+  // Get nearby fertilizer dealers
+  async getNearbyDealers(location: { latitude: number; longitude: number }, radius: number = 50): Promise<unknown[]> {
+    try {
+      if (!this.fertilizerApiKey) {
+        throw new Error('Fertilizer API key not configured');
+      }
+
+      const params = new URLSearchParams({
+        api_key: this.fertilizerApiKey,
+        lat: location.latitude.toString(),
+        lon: location.longitude.toString(),
+        radius: radius.toString()
+      });
+
+      const response = await fetch(
+        `${this.fertilizerBaseUrl}/nearby-dealers?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch nearby dealers');
+      }
+
+      const data: FertilizerResponse = await response.json();
+      return data.dealers || [];
+
+    } catch (error) {
+      console.error('Nearby dealers error:', error);
+      throw new Error('Unable to fetch nearby dealers. Please check your API configuration.');
+    }
   }
 }
 

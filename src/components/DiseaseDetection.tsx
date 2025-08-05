@@ -49,15 +49,11 @@ const DiseaseDetection: React.FC = () => {
     setDiseases([]);
 
     try {
-      // Use mock data for now (replace with actual API call)
-      const mockDiseases = plantDiseaseService.getMockDiseaseData();
-      setDiseases(mockDiseases);
-      
-      // Uncomment when API is ready:
-      // const detectedDiseases = await plantDiseaseService.identifyDisease(selectedFile);
-      // setDiseases(detectedDiseases);
+      // Use real API for disease detection
+      const detectedDiseases = await plantDiseaseService.identifyDisease(selectedFile);
+      setDiseases(detectedDiseases);
     } catch (err) {
-      setError('Failed to analyze image. Please try again.');
+      setError('Failed to analyze image. Please check your API configuration and try again.');
       console.error('Disease detection error:', err);
     } finally {
       setLoading(false);

@@ -1,40 +1,45 @@
-# 🌱 Agriculture Plant Doctor
+# 🌱 Agriculture Plant Doctor - India Focus
 
-A comprehensive AI-powered agriculture assistant that helps farmers and gardeners with plant disease detection, crop recommendations, weather monitoring, and fertilizer guidance.
+A comprehensive AI-powered agriculture assistant specifically designed for Indian farmers and gardeners. This application provides real-time plant disease detection, crop recommendations based on Indian agricultural seasons, weather monitoring using Indian Meteorological Department data, and fertilizer guidance using Indian agricultural databases.
 
 ## ✨ Features
 
 ### 🔍 Plant Disease Detection
 - Upload plant images for AI-powered disease identification
-- Get detailed symptoms, causes, and treatment recommendations
+- Real-time analysis using PlantNet API
+- Detailed symptoms, causes, and treatment recommendations
 - Severity assessment and prevention strategies
-- Support for multiple plant types and diseases
+- Focus on Indian crop diseases and local treatment methods
 
-### 🌾 Crop Recommendations
-- Weather-based crop suggestions
-- Seasonal planting guidance
-- Profitability analysis and market prices
-- Soil compatibility checking
-- Growth period and yield expectations
+### 🌾 Crop Recommendations (Indian Focus)
+- Weather-based crop suggestions using IMD data
+- Indian agricultural seasons (Kharif, Rabi, Zaid)
+- Krishi Vigyan Kendra (KVK) integration for local recommendations
+- Profitability analysis with Indian market prices
+- Soil compatibility checking using ICAR-NBSS&LUP data
+- Growth period and yield expectations for Indian conditions
 
-### 🌤️ Weather Monitoring
-- Real-time weather data integration
-- Agricultural advice based on conditions
-- 5-day weather forecast
-- Location-based recommendations
+### 🌤️ Weather Monitoring (Indian Meteorological Department)
+- Real-time weather data from IMD
+- Agricultural advice based on Indian weather patterns
+- 5-day weather forecast for Indian regions
+- Location-based recommendations for Indian agriculture
+- Agro-advisory services integration
 
-### 🌱 Fertilizer Guide
-- Personalized fertilizer recommendations
-- NPK ratio explanations
+### 🌱 Fertilizer Guide (Indian Database)
+- Personalized fertilizer recommendations from Indian fertilizer database
+- NPK ratio explanations and educational content
 - Growth stage-specific suggestions
-- Organic and inorganic options
-- Application instructions and pricing
+- Organic and inorganic options with Indian pricing
+- Application instructions in Indian context
+- Fertilizer subsidy information
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
+- API keys for various Indian agricultural services
 
 ### Installation
 
@@ -49,11 +54,24 @@ cd agriculture-plant-doctor
 npm install
 ```
 
-3. Set up environment variables (optional):
-Create a `.env.local` file in the root directory:
+3. Set up environment variables:
+Create a `.env.local` file in the root directory with the following API keys:
+
 ```env
+# Weather APIs
 NEXT_PUBLIC_WEATHER_API_KEY=your_openweathermap_api_key
+NEXT_PUBLIC_IMD_API_KEY=your_indian_meteorological_department_api_key
+
+# Indian Agricultural APIs
+NEXT_PUBLIC_KVK_API_KEY=your_krishi_vigyan_kendra_api_key
+NEXT_PUBLIC_SOIL_API_KEY=your_icar_nbsslup_api_key
+NEXT_PUBLIC_FERTILIZER_API_KEY=your_indian_fertilizer_database_api_key
+NEXT_PUBLIC_MARKET_API_KEY=your_agmarknet_api_key
+
+# Plant Disease Detection
 NEXT_PUBLIC_PLANT_DISEASE_API_KEY=your_plantnet_api_key
+
+# Location Services
 NEXT_PUBLIC_LOCATION_API_KEY=your_opencage_api_key
 ```
 
@@ -63,6 +81,37 @@ npm run dev
 ```
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 🔑 API Keys Setup
+
+### Required API Keys and How to Get Them
+
+#### 1. Weather APIs
+- **OpenWeatherMap API**: Free tier available at [openweathermap.org](https://openweathermap.org/api)
+- **Indian Meteorological Department (IMD) API**: Contact IMD for API access at [mausam.imd.gov.in](https://mausam.imd.gov.in)
+
+#### 2. Indian Agricultural APIs
+- **Krishi Vigyan Kendra (KVK) API**: Contact ICAR for API access
+- **ICAR-NBSS&LUP Soil API**: Contact ICAR-NBSS&LUP for soil data access
+- **Indian Fertilizer Database API**: Contact Department of Fertilizers for API access
+- **Agmarknet API**: Contact Agmarknet for market price data access
+
+#### 3. Plant Disease Detection
+- **PlantNet API**: Free tier available at [my.plantnet.org](https://my.plantnet.org)
+
+#### 4. Location Services
+- **OpenCage Geocoding API**: Free tier available at [opencagedata.com](https://opencagedata.com)
+
+### API Configuration Priority
+
+The application uses a priority-based approach for APIs:
+
+1. **Weather Data**: IMD API (primary) → OpenWeatherMap (fallback)
+2. **Crop Recommendations**: KVK API (primary)
+3. **Soil Data**: ICAR-NBSS&LUP API (primary)
+4. **Fertilizer Data**: Indian Fertilizer Database (primary)
+5. **Market Prices**: Agmarknet API (primary)
+6. **Plant Disease**: PlantNet API (primary)
 
 ## 🏗️ Project Structure
 
@@ -80,14 +129,14 @@ src/
 │   ├── CropRecommendations.tsx # Crop suggestions
 │   └── FertilizerGuide.tsx # Fertilizer recommendations
 ├── services/              # API and business logic
-│   ├── weatherService.ts  # Weather data handling
-│   ├── plantDiseaseService.ts # Disease detection
-│   ├── cropService.ts     # Crop recommendations
-│   └── fertilizerService.ts # Fertilizer data
+│   ├── weatherService.ts  # Weather data handling (IMD + OpenWeatherMap)
+│   ├── plantDiseaseService.ts # Disease detection (PlantNet)
+│   ├── cropService.ts     # Crop recommendations (KVK)
+│   └── fertilizerService.ts # Fertilizer data (Indian Database)
 ├── types/                 # TypeScript type definitions
 │   └── index.ts          # Core type interfaces
 └── config/               # Configuration files
-    └── api.ts            # API configuration
+    └── api.ts            # API configuration and endpoints
 ```
 
 ## 🛠️ Technology Stack
@@ -96,57 +145,64 @@ src/
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
 - **State Management**: React Hooks
-- **APIs**: OpenWeatherMap, PlantNet (configurable)
+- **APIs**: 
+  - Indian Meteorological Department (IMD)
+  - Krishi Vigyan Kendra (KVK)
+  - ICAR-NBSS&LUP (Soil Data)
+  - Indian Fertilizer Database
+  - Agmarknet (Market Prices)
+  - PlantNet (Disease Detection)
+  - OpenWeatherMap (Weather Fallback)
+  - OpenCage (Geocoding)
 
 ## 📱 Features in Detail
 
 ### Disease Detection
 - Drag-and-drop image upload
 - Real-time image preview
-- AI-powered disease identification
-- Comprehensive treatment plans
-- Prevention strategies
+- AI-powered disease identification using PlantNet
+- Comprehensive treatment plans for Indian conditions
+- Prevention strategies adapted for Indian climate
 
 ### Weather Integration
-- Current weather conditions
-- Agricultural advice based on weather
-- 5-day forecast
-- Location-based recommendations
+- Current weather conditions from IMD
+- Agricultural advice based on Indian weather patterns
+- 5-day forecast for Indian regions
+- Location-based recommendations for Indian agriculture
+- Agro-advisory services
 
 ### Crop Recommendations
-- Weather-optimized suggestions
-- Seasonal filtering
-- Profitability analysis
-- Soil compatibility
-- Market price information
+- Weather-optimized suggestions using IMD data
+- Indian seasonal filtering (Kharif, Rabi, Zaid)
+- Profitability analysis with Indian market prices
+- Soil compatibility using ICAR data
+- Market price information from Agmarknet
 
 ### Fertilizer Guide
 - NPK ratio explanations
 - Growth stage recommendations
-- Organic and inorganic options
-- Application instructions
-- Price comparison
+- Organic and inorganic options with Indian pricing
+- Application instructions for Indian conditions
+- Price comparison with subsidy information
 
 ## 🔧 Configuration
 
-### API Keys (Optional)
-The application works with mock data by default. For production use, add these API keys:
-
-1. **OpenWeatherMap API**: For real weather data
-2. **PlantNet API**: For plant disease identification
-3. **OpenCage API**: For location services
+### API Keys (Required)
+The application requires API keys for full functionality. Without proper API keys, the application will show error messages and guide users to configure them.
 
 ### Customization
-- Modify crop data in `src/services/cropService.ts`
-- Update fertilizer information in `src/services/fertilizerService.ts`
+- Modify crop data sources in `src/services/cropService.ts`
+- Update fertilizer information sources in `src/services/fertilizerService.ts`
 - Add new disease types in `src/services/plantDiseaseService.ts`
+- Configure additional weather sources in `src/services/weatherService.ts`
 
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
 1. Push your code to GitHub
 2. Connect your repository to Vercel
-3. Deploy automatically
+3. Add environment variables in Vercel dashboard
+4. Deploy automatically
 
 ### Other Platforms
 ```bash
@@ -168,15 +224,35 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- OpenWeatherMap for weather data
+- Indian Meteorological Department (IMD) for weather data
+- Krishi Vigyan Kendra (KVK) for crop recommendations
+- ICAR-NBSS&LUP for soil data
+- Indian Fertilizer Database for fertilizer information
+- Agmarknet for market price data
 - PlantNet for plant identification
-- Agricultural research databases
-- The farming community for feedback and testing
+- The Indian farming community for feedback and testing
 
 ## 📞 Support
 
 For support, email support@agriculture-plant-doctor.com or create an issue in this repository.
 
+## 🔍 Troubleshooting
+
+### Common Issues
+
+1. **API Key Errors**: Ensure all required API keys are properly configured in `.env.local`
+2. **Location Access**: Enable location services in your browser for better recommendations
+3. **Image Upload Issues**: Ensure images are in supported formats (PNG, JPG, JPEG)
+4. **Weather Data Not Loading**: Check IMD and OpenWeatherMap API keys
+
+### Error Messages
+
+The application provides clear error messages when:
+- API keys are missing or invalid
+- Location services are disabled
+- Network connectivity issues occur
+- API rate limits are exceeded
+
 ---
 
-**Made with ❤️ for the agricultural community**
+**Made with ❤️ for the Indian agricultural community**
