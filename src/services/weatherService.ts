@@ -48,7 +48,7 @@ class WeatherService {
 
       const forecastData = await forecastResponse.json();
       
-      const forecast = forecastData.list.slice(0, 5).map((item: any) => ({
+      const forecast = forecastData.list.slice(0, 5).map((item: { dt: number; main: { temp_min: number; temp_max: number; humidity: number }; rain?: { '3h': number } }) => ({
         date: new Date(item.dt * 1000).toLocaleDateString(),
         temp: {
           min: item.main.temp_min,

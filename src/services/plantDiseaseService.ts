@@ -27,7 +27,7 @@ class PlantDiseaseService {
       const data = await response.json();
       
       // Transform API response to our PlantDisease format
-      return data.results?.map((result: any, index: number) => ({
+      return data.results?.map((result: { species?: { scientificNameWithoutAuthor?: string; commonNames?: string[] }; score?: number }, index: number) => ({
         id: `disease_${index}`,
         name: result.species?.scientificNameWithoutAuthor || 'Unknown Disease',
         description: result.species?.commonNames?.[0] || 'Disease identification',
@@ -35,7 +35,7 @@ class PlantDiseaseService {
         causes: this.extractCauses(result),
         treatment: this.getTreatmentRecommendations(result.species?.scientificNameWithoutAuthor),
         prevention: this.getPreventionMethods(result.species?.scientificNameWithoutAuthor),
-        severity: this.calculateSeverity(result.score),
+        severity: this.calculateSeverity(result.score || 0),
         affectedCrops: result.species?.commonNames || [],
       })) || [];
     } catch (error) {
@@ -44,7 +44,7 @@ class PlantDiseaseService {
     }
   }
 
-  private extractSymptoms(result: any): string[] {
+  private extractSymptoms(result: { species?: { scientificNameWithoutAuthor?: string; commonNames?: string[] }; score?: number }): string[] {
     // Extract symptoms from API response or provide defaults
     return [
       'Leaf discoloration',
@@ -54,7 +54,7 @@ class PlantDiseaseService {
     ];
   }
 
-  private extractCauses(result: any): string[] {
+  private extractCauses(result: { species?: { scientificNameWithoutAuthor?: string; commonNames?: string[] }; score?: number }): string[] {
     return [
       'Fungal infection',
       'Poor drainage',
