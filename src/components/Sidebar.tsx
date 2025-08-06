@@ -10,6 +10,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
     { id: 'disease-detection', label: 'Disease Detection', icon: '🔍' },
     { id: 'crop-recommendations', label: 'Crop Recommendations', icon: '🌾' },
+    { id: 'weather-analytics', label: 'Weather Analytics', icon: '🌤️' },
+    { id: 'crop-analytics', label: 'Crop Analytics', icon: '📈' },
     { id: 'fertilizer-guide', label: 'Fertilizer Guide', icon: '🌱' },
   ];
 
